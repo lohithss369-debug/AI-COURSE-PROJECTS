@@ -4,16 +4,19 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Copy files
+# Copy only dependency files first for caching
 COPY pyproject.toml poetry.lock* ./
+
+# Install Python dependencies
 RUN pip install --upgrade pip \
     && pip install poetry \
     && poetry config virtualenvs.create false \
-    && poetry install --no-dev --no-interaction --no-ansi
+    && poetry install --without dev --no-interaction --no-ansi
 
+# Copy the rest of the app
 COPY . .
 
-# Expose port
+# Expose Streamlit default port
 EXPOSE 8501
 
 # Start Streamlit
