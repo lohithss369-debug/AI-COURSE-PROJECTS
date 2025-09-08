@@ -27,6 +27,9 @@ EMOJI_PATTERN = re.compile("[\U0001F300-\U0001F6FF\U0001F900-\U0001F9FF\U0001F1E
 # --------------------------
 @st.cache_resource
 def load_model(path="spam_classifier.pkl"):
+    if not os.path.exists(path):
+        st.error(f"❌ Model file not found: {path}")
+        st.stop()  # Stop the app if model is missing
     with open(path, "rb") as f:
         saved = pickle.load(f)
     return saved['model'], saved['vectorizer'], saved['num_cols']
@@ -219,3 +222,4 @@ st.markdown("""
     Made with ❤️ using Streamlit & Python | For Educational Purposes Only
 </div>
 """, unsafe_allow_html=True)
+
