@@ -7,6 +7,8 @@ from nltk.corpus import stopwords
 import nltk
 from gtts import gTTS
 import os
+import requests
+
 # --------------------------
 # Streamlit Config
 # --------------------------
@@ -23,13 +25,29 @@ STOPWORDS = set(stopwords.words('english'))
 EMOJI_PATTERN = re.compile("[\U0001F300-\U0001F6FF\U0001F900-\U0001F9FF\U0001F1E0-\U0001F1FF]+", flags=re.UNICODE)
 
 # --------------------------
+# Model path & fallback download
+# --------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "spam_classifier.pkl")
+MODEL_URL = "https://github.com/lohithss369-debug/AI-COURSE-PROJECTS/blob/main/Spam-Ham-Mail/spam_classifier.pkl"
+
+if not os.path.exists(MODEL_PATH):
+    with st.spinner("Downloading model..."):
+        try:
+            r = requests.get(MODEL_URL)
+            r.raise_for_status()
+            with open(MODEL_PATH, "wb") as f:
+                f.write(r.content)
+            st.success("✅ Model downloaded successfully")
+        except Exception as e:
+            st.error("❌ Failed to download model. Check your URL or internet connection.")
+            st.stop()
+
+# --------------------------
 # Load model
 # --------------------------
 @st.cache_resource
-def load_model(path="spam_classifier.pkl"):
-    if not os.path.exists(path):
-        st.error(f"❌ Model file not found: {path}")
-        st.stop()  # Stop the app if model is missing
+def load_model(path=MODEL_PATH):
     with open(path, "rb") as f:
         saved = pickle.load(f)
     return saved['model'], saved['vectorizer'], saved['num_cols']
@@ -204,7 +222,7 @@ with tab3:
                 try:
                     tts_text = "\n".join(sop_points)
                     tts = gTTS(text=tts_text, lang='en')
-                    audio_path = "sop_tts.mp3"
+                    audio_path = os.path.join(BASE_DIR, "sop_tts.mp3")
                     tts.save(audio_path)
                     st.success("✅ SOP Audio Generated")
                     st.audio(audio_path, format='audio/mp3')
@@ -215,12 +233,10 @@ with tab3:
 # --------------------------
 # Footer
 # --------------------------
-st.markdown("""
+st.markdown(f"""
 <div style='margin-top:30px;padding:10px;
             background:linear-gradient(to right,#36d1dc,#5b86e5);
             border-radius:10px;text-align:center;color:white;font-size:13px;'>
     Made with ❤️ using Streamlit & Python | For Educational Purposes Only
 </div>
 """, unsafe_allow_html=True)
-
-
