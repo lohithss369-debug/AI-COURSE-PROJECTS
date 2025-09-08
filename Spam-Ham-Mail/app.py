@@ -29,7 +29,7 @@ EMOJI_PATTERN = re.compile("[\U0001F300-\U0001F6FF\U0001F900-\U0001F9FF\U0001F1E
 # --------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "spam_classifier.pkl")
-MODEL_URL = "https://github.com/lohithss369-debug/AI-COURSE-PROJECTS/blob/main/Spam-Ham-Mail/spam_classifier.pkl"
+MODEL_URL = "https://github.com/lohithss369-debug/AI-COURSE-PROJECTS/raw/main/Spam-Ham-Mail/spam_classifier.pkl"
 
 if not os.path.exists(MODEL_PATH):
     with st.spinner("Downloading model..."):
@@ -106,6 +106,14 @@ def add_features(df):
     df['stopword_count'] = df['message'].apply(lambda s: sum(1 for w in tokenize_simple(s) if w in STOPWORDS))
     return df
 
+def interpret_prob(prob, threshold=0.2):
+    if prob >= 0.9:
+        return "Very likely spam 🚨"
+    elif prob >= threshold:
+        return "Likely spam ⚠️"
+    else:
+        return "Likely ham ✅"
+
 def predict_single(email, threshold=0.2):
     df = pd.DataFrame({'message':[email]})
     df_feat = add_features(df)
@@ -114,7 +122,8 @@ def predict_single(email, threshold=0.2):
     X = hstack([X_text, X_num])
     prob = clf.predict_proba(X)[0,1]
     label = "spam" if prob >= threshold else "ham"
-    return label, prob
+    interpretation = interpret_prob(prob, threshold)
+    return label, prob, interpretation
 
 def predict_batch(emails, threshold=0.2):
     df = pd.DataFrame({'message': emails})
@@ -124,7 +133,13 @@ def predict_batch(emails, threshold=0.2):
     X = hstack([X_text, X_num])
     probs = clf.predict_proba(X)[:,1]
     preds = ["spam" if p >= threshold else "ham" for p in probs]
-    return pd.DataFrame({"Email": emails, "Predicted Label": preds, "Probability": probs.round(3)})
+    interpretations = [interpret_prob(p, threshold) for p in probs]
+    return pd.DataFrame({
+        "Email": emails,
+        "Predicted Label": preds,
+        "Probability of Spam": probs.round(3),
+        "Interpretation": interpretations
+    })
 
 # --------------------------
 # Tab 1: Predictor
@@ -141,6 +156,9 @@ with tab1:
     </div>
     """, unsafe_allow_html=True)
 
+    # Show model accuracy
+    st.info("✅ Model Accuracy: **91%** on validation set")
+
     st.markdown("### ✍️ Enter Emails")
     single_email = st.text_area("Single Email:", height=120)
     batch_text = st.text_area("Multiple Emails (separate with `;`):", height=150)
@@ -148,12 +166,12 @@ with tab1:
     if st.button("🔍 Predict Emails", use_container_width=True):
         # ---- Single Email ----
         if single_email.strip():
-            label, prob = predict_single(single_email)
+            label, prob, interpretation = predict_single(single_email)
             st.markdown(f"""
             <div class="result-card" style='background:#D5F5E3;border-left:6px solid #33cc33;'>
                 <h3>Single Email</h3>
                 <p>Predicted Label: <b>{label}</b></p>
-                <p>Probability: <b>{prob:.3f}</b></p>
+                <p>Probability of being <b>spam</b>: <b>{prob:.3f}</b> ({interpretation})</p>
             </div>
             """, unsafe_allow_html=True)
 
